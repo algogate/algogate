@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoGate</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-icon">🔒</div>
+      <h1>AlgoGate</h1>
+      <p class="tagline">Productivity through Leetcode grinding</p>
+    </div>
+    
+    <div class="status-section">
+      <div class="status-card" id="access-status">
+        <div class="status-icon" id="status-icon">⏳</div>
+        <div class="status-text">
+          <div class="status-title" id="status-title">Checking...</div>
+          <div class="status-subtitle" id="status-subtitle">Please wait</div>
+        </div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value" id="problems-solved">0</div>
+          <div class="stat-label">Problems Solved</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="blocked-sites">7</div>
+          <div class="stat-label">Sites Blocked</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="actions-section">
+      <button class="btn btn-primary" id="goto-leetcode">
+        <span>🚀</span>
+        Go to LeetCode
+      </button>
+      
+      <button class="btn btn-secondary" id="grace-period">
+        <span>⏰</span>
+        Start Grace Period
+      </button>
+    </div>
+    
+    <div class="settings-section">
+      <div class="section-header">
+        <h2>Settings</h2>
+        <label class="toggle">
+          <input type="checkbox" id="enable-toggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      
+      <div class="setting-item">
+        <label for="access-duration">Access Duration (minutes)</label>
+        <input type="number" id="access-duration" min="15" max="480" value="60">
+      </div>
+      
+      <div class="setting-item">
+        <label for="grace-period-duration">Grace Period (minutes)</label>
+        <input type="number" id="grace-period-duration" min="5" max="120" value="30">
+      </div>
+      
+      <div class="setting-item">
+        <label for="blocked-sites-list">Blocked Sites (one per line)</label>
+        <textarea id="blocked-sites-list" rows="6" placeholder="instagram.com&#10;tiktok.com&#10;youtube.com"></textarea>
+      </div>
+      
+      <button class="btn btn-save" id="save-settings">Save Settings</button>
+    </div>
+    
+    <div class="last-solved" id="last-solved-section" style="display: none;">
+      <div class="section-header">
+        <h2>Last Solved Problem</h2>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title" id="last-problem-title">-</div>
+        <div class="problem-meta">
+          <span id="last-problem-difficulty">-</span>
+          <span id="last-problem-time">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>Keep grinding! 💪</p>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

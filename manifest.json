@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "AlgoGate",
+  "version": "1.0.0",
+  "description": "Block social media access until you solve a LeetCode problem",
+  "permissions": [
+    "storage",
+    "tabs",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "*://leetcode.com/*",
+    "*://*.leetcode.com/*",
+    "*://instagram.com/*",
+    "*://*.instagram.com/*",
+    "*://tiktok.com/*",
+    "*://*.tiktok.com/*",
+    "*://youtube.com/*",
+    "*://*.youtube.com/*",
+    "*://twitter.com/*",
+    "*://*.twitter.com/*",
+    "*://x.com/*",
+    "*://*.x.com/*",
+    "*://facebook.com/*",
+    "*://*.facebook.com/*",
+    "*://reddit.com/*",
+    "*://*.reddit.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://leetcode.com/*", "*://*.leetcode.com/*"],
+      "js": ["leetcode-detector.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://instagram.com/*",
+        "*://*.instagram.com/*",
+        "*://tiktok.com/*",
+        "*://*.tiktok.com/*",
+        "*://youtube.com/*",
+        "*://*.youtube.com/*",
+        "*://twitter.com/*",
+        "*://*.twitter.com/*",
+        "*://x.com/*",
+        "*://*.x.com/*",
+        "*://facebook.com/*",
+        "*://*.facebook.com/*",
+        "*://reddit.com/*",
+        "*://*.reddit.com/*"
+      ],
+      "js": ["blocker.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
