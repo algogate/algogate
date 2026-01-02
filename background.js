@@ -135,10 +135,20 @@ async function checkAccess(url) {
     return { hasAccess: true, reason: 'disabled' };
   }
   
-  // Check if URL is in blocked sites
-  const isBlocked = settings.blockedSites.some(site => 
-    url.includes(site)
-  );
+  // Extract hostname from URL for proper domain matching
+  let hostname;
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch (e) {
+    return { hasAccess: true, reason: 'invalid_url' };
+  }
+  
+  // Check if URL is in blocked sites using proper domain matching
+  const isBlocked = settings.blockedSites.some(site => {
+    const normalizedSite = site.toLowerCase();
+    // Match exact domain or subdomain
+    return hostname === normalizedSite || hostname.endsWith('.' + normalizedSite);
+  });
   
   if (!isBlocked) {
     return { hasAccess: true, reason: 'not_blocked' };

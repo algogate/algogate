@@ -107,11 +107,28 @@ function setupEventListeners() {
     try {
       const accessDuration = parseInt(document.getElementById('access-duration').value);
       const gracePeriod = parseInt(document.getElementById('grace-period-duration').value);
+      
+      // Validate input ranges
+      if (isNaN(accessDuration) || accessDuration < 15 || accessDuration > 480) {
+        showNotification('Access duration must be between 15 and 480 minutes', 'error');
+        return;
+      }
+      
+      if (isNaN(gracePeriod) || gracePeriod < 5 || gracePeriod > 120) {
+        showNotification('Grace period must be between 5 and 120 minutes', 'error');
+        return;
+      }
+      
       const blockedSitesText = document.getElementById('blocked-sites-list').value;
       const blockedSites = blockedSitesText
         .split('\n')
         .map(s => s.trim())
         .filter(s => s.length > 0);
+      
+      if (blockedSites.length === 0) {
+        showNotification('You must have at least one blocked site', 'error');
+        return;
+      }
       
       await chrome.runtime.sendMessage({
         type: 'UPDATE_SETTINGS',

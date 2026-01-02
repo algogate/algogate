@@ -41,10 +41,14 @@
   function blockPage() {
     console.log('AlgoGate: Blocking page access');
     
-    // Stop all page execution
-    document.documentElement.innerHTML = '';
+    // Create overlay instead of clearing page
+    // Remove any existing block screen first
+    const existingBlock = document.getElementById('algogate-block-screen');
+    if (existingBlock) {
+      return; // Already blocked
+    }
     
-    // Create block screen
+    // Create block screen overlay
     const blockScreen = document.createElement('div');
     blockScreen.id = 'algogate-block-screen';
     blockScreen.style.cssText = `
@@ -177,6 +181,9 @@
     gracePeriodBtn.addEventListener('click', handleGracePeriod);
     
     document.documentElement.appendChild(blockScreen);
+    
+    // Prevent scrolling of page beneath
+    document.body.style.overflow = 'hidden';
   }
   
   // Handle grace period activation
