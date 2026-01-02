@@ -23,11 +23,13 @@
       accessStatus = response;
       
       if (!response.hasAccess) {
-        blockPage();
+        blockPage(response);
       } else {
         // Allow access but might want to show a reminder
         if (response.reason === 'granted' && response.remainingMinutes) {
           showAccessReminder(response.remainingMinutes);
+        } else if (response.reason === 'grace_completed') {
+          showAccessReminder(response.remainingMinutes, 'Grace period complete!');
         }
       }
     } catch (error) {
@@ -38,15 +40,19 @@
   }
   
   // Block the page
-  function blockPage() {
-    console.log('AlgoGate: Blocking page access');
+  function blockPage(statusInfo) {
+    console.log('AlgoGate: Blocking page access', statusInfo);
     
     // Create overlay instead of clearing page
     // Remove any existing block screen first
     const existingBlock = document.getElementById('algogate-block-screen');
     if (existingBlock) {
-      return; // Already blocked
+      existingBlock.remove(); // Remove old screen to update with new info
     }
+    
+    // Determine if this is a grace period block
+    const isGraceBlocking = statusInfo && statusInfo.reason === 'grace_blocking';
+    const remainingMinutes = statusInfo?.remainingMinutes || 0;
     
     // Create block screen overlay
     const blockScreen = document.createElement('div');
@@ -65,6 +71,12 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     `;
     
+    const mainTitle = isGraceBlocking ? 'Grace Period Active' : 'Access Blocked';
+    const mainIcon = isGraceBlocking ? '⏳' : '🔒';
+    const mainMessage = isGraceBlocking 
+      ? `Stay productive for ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} to earn access, or solve a LeetCode problem now for instant access!`
+      : 'Time to grind! Solve a new LeetCode problem to unlock access to this site.';
+    
     blockScreen.innerHTML = `
       <div style="
         background: white;
@@ -74,22 +86,43 @@
         text-align: center;
         box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       ">
-        <div style="font-size: 80px; margin-bottom: 20px;">🔒</div>
+        <div style="font-size: 80px; margin-bottom: 20px;">${mainIcon}</div>
         <h1 style="
           font-size: 36px;
           font-weight: 700;
           color: #1a202c;
           margin: 0 0 16px 0;
-        ">Access Blocked</h1>
+        ">${mainTitle}</h1>
         <p style="
           font-size: 18px;
           color: #4a5568;
           line-height: 1.6;
           margin: 0 0 32px 0;
         ">
-          Time to grind! Solve a new LeetCode problem to unlock access to this site.
+          ${mainMessage}
         </p>
         
+        ${isGraceBlocking ? `
+        <div style="
+          background: #fff3cd;
+          border-left: 4px solid #ffc107;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 32px;
+          text-align: left;
+        ">
+          <div style="
+            font-size: 15px;
+            color: #856404;
+            font-weight: 600;
+            margin-bottom: 8px;
+          ">⏰ Time Remaining: ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}</div>
+          <div style="
+            font-size: 14px;
+            color: #856404;
+          ">The grace period requires you to wait it out. Use this time to try solving a problem - it will give you instant access!</div>
+        </div>
+        ` : `
         <div style="
           background: #f7fafc;
           border-radius: 12px;
@@ -116,6 +149,7 @@
             <li>Access will be automatically granted!</li>
           </ol>
         </div>
+        `}
         
         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
           <button id="algogate-goto-leetcode" style="
@@ -130,6 +164,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
           ">Go to LeetCode</button>
           
+          ${!isGraceBlocking ? `
           <button id="algogate-grace-period" style="
             background: white;
             color: #667eea;
@@ -140,16 +175,19 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-          ">Use Grace Period</button>
+          ">Start Grace Period</button>
+          ` : ''}
         </div>
         
+        ${!isGraceBlocking ? `
         <div style="
           margin-top: 24px;
           font-size: 13px;
           color: #a0aec0;
         ">
-          Can't solve a problem? Use the grace period for temporary access.
+          Can't solve a problem? Start the grace period - stay blocked and productive, then earn access.
         </div>
+        ` : ''}
       </div>
     `;
     
@@ -167,34 +205,43 @@
       window.location.href = 'https://leetcode.com/problemset/';
     });
     
+    // Only add grace period button listener if it exists
     const gracePeriodBtn = blockScreen.querySelector('#algogate-grace-period');
-    gracePeriodBtn.addEventListener('mouseenter', () => {
-      gracePeriodBtn.style.background = '#667eea';
-      gracePeriodBtn.style.color = 'white';
-      gracePeriodBtn.style.transform = 'translateY(-2px)';
-    });
-    gracePeriodBtn.addEventListener('mouseleave', () => {
-      gracePeriodBtn.style.background = 'white';
-      gracePeriodBtn.style.color = '#667eea';
-      gracePeriodBtn.style.transform = 'translateY(0)';
-    });
-    gracePeriodBtn.addEventListener('click', handleGracePeriod);
+    if (gracePeriodBtn) {
+      gracePeriodBtn.addEventListener('mouseenter', () => {
+        gracePeriodBtn.style.background = '#667eea';
+        gracePeriodBtn.style.color = 'white';
+        gracePeriodBtn.style.transform = 'translateY(-2px)';
+      });
+      gracePeriodBtn.addEventListener('mouseleave', () => {
+        gracePeriodBtn.style.background = 'white';
+        gracePeriodBtn.style.color = '#667eea';
+        gracePeriodBtn.style.transform = 'translateY(0)';
+      });
+      gracePeriodBtn.addEventListener('click', handleGracePeriod);
+    }
     
     document.documentElement.appendChild(blockScreen);
     
     // Prevent scrolling of page beneath
     document.body.style.overflow = 'hidden';
+    
+    // Auto-refresh the screen every 30 seconds to update countdown
+    if (isGraceBlocking) {
+      setTimeout(() => checkAccess(), 30000);
+    }
   }
   
   // Handle grace period activation
   async function handleGracePeriod() {
     try {
       const response = await chrome.runtime.sendMessage({
-        type: 'START_GRACE_PERIOD'
+        type: 'START_GRACE_PERIOD',
+        url: window.location.href
       });
       
       if (response.success) {
-        // Reload the page to grant access
+        // Reload the page to show the grace period block screen
         window.location.reload();
       }
     } catch (error) {
@@ -204,7 +251,7 @@
   }
   
   // Show access reminder at top of page
-  function showAccessReminder(remainingMinutes) {
+  function showAccessReminder(remainingMinutes, customMessage = null) {
     // Only show once per page load
     if (document.getElementById('algogate-reminder')) return;
     
@@ -225,10 +272,12 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     `;
     
+    const message = customMessage || `${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''} of access remaining`;
+    
     reminder.innerHTML = `
       <span style="font-weight: 600;">⏰ AlgoGate:</span>
       <span style="margin-left: 8px;">
-        ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''} of access remaining
+        ${message}
       </span>
       <button id="algogate-dismiss-reminder" style="
         background: rgba(255,255,255,0.2);

@@ -13,11 +13,14 @@ const DEFAULT_SETTINGS = {
     'reddit.com'
   ],
   solvedProblems: [],
+  solvedProblemTimestamps: {}, // Track when each problem was solved
   accessGrantedUntil: 0,
   gracePeriodMinutes: 30,
   accessDurationMinutes: 60,
   isEnabled: true,
-  lastSolvedProblem: null
+  lastSolvedProblem: null,
+  graceBlockStartedAt: null, // Track when grace period blocking started
+  graceBlockSite: null // Track which site triggered grace blocking
 };
 
 // Initialize extension on install
@@ -60,7 +63,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   
   if (message.type === 'START_GRACE_PERIOD') {
-    startGracePeriod()
+    startGracePeriod(message.url)
       .then(result => sendResponse({ success: true, data: result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
@@ -73,8 +76,11 @@ async function handleLeetCodeSolved(problemData) {
   
   const settings = await chrome.storage.local.get([
     'solvedProblems',
+    'solvedProblemTimestamps',
     'accessDurationMinutes',
-    'isEnabled'
+    'isEnabled',
+    'graceBlockStartedAt',
+    'graceBlockSite'
   ]);
   
   if (!settings.isEnabled) {
@@ -83,25 +89,51 @@ async function handleLeetCodeSolved(problemData) {
   
   // Check if this problem was already solved
   const solvedProblems = settings.solvedProblems || [];
+  const solvedProblemTimestamps = settings.solvedProblemTimestamps || {};
   const problemId = problemData.problemId || problemData.title;
   
   if (solvedProblems.includes(problemId)) {
-    return { 
-      alreadySolved: true, 
-      message: 'This problem was already solved before' 
-    };
+    // Check if this problem was solved AFTER the extension was installed
+    const solveTimestamp = solvedProblemTimestamps[problemId];
+    
+    if (!solveTimestamp) {
+      // Problem was in the list but has no timestamp - likely from before we tracked timestamps
+      // To prevent gaming, we won't grant access for re-solving old problems
+      return { 
+        alreadySolved: true, 
+        message: 'This problem was already solved before. Try a new problem!' 
+      };
+    }
+    
+    // Check if problem was solved recently (within last 5 minutes) 
+    // This handles the grace period scenario
+    const timeSinceSolved = Date.now() - solveTimestamp;
+    if (timeSinceSolved < 5 * 60 * 1000) {
+      // Recently solved - this might be during a grace period wait
+      // Allow access as they genuinely just solved it
+    } else {
+      return { 
+        alreadySolved: true, 
+        message: 'This problem was already solved before. Try a new problem!' 
+      };
+    }
   }
   
-  // Add to solved problems
+  // Add to solved problems with timestamp
   solvedProblems.push(problemId);
+  solvedProblemTimestamps[problemId] = Date.now();
   
   // Grant access for the configured duration
   const accessDurationMs = (settings.accessDurationMinutes || 60) * 60 * 1000;
   const accessGrantedUntil = Date.now() + accessDurationMs;
   
+  // Clear any active grace block since they solved a problem
   await chrome.storage.local.set({
     solvedProblems,
+    solvedProblemTimestamps,
     accessGrantedUntil,
+    graceBlockStartedAt: null,
+    graceBlockSite: null,
     lastSolvedProblem: {
       ...problemData,
       solvedAt: Date.now()
@@ -128,7 +160,10 @@ async function checkAccess(url) {
   const settings = await chrome.storage.local.get([
     'isEnabled',
     'blockedSites',
-    'accessGrantedUntil'
+    'accessGrantedUntil',
+    'graceBlockStartedAt',
+    'graceBlockSite',
+    'gracePeriodMinutes'
   ]);
   
   if (!settings.isEnabled) {
@@ -154,7 +189,7 @@ async function checkAccess(url) {
     return { hasAccess: true, reason: 'not_blocked' };
   }
   
-  // Check if access is still valid
+  // Check if access is still valid (from solving a problem)
   const now = Date.now();
   if (settings.accessGrantedUntil && settings.accessGrantedUntil > now) {
     const remainingMs = settings.accessGrantedUntil - now;
@@ -164,6 +199,52 @@ async function checkAccess(url) {
       reason: 'granted',
       remainingMinutes
     };
+  }
+  
+  // Check if user is in a grace period block for this site
+  if (settings.graceBlockStartedAt && settings.graceBlockSite) {
+    const graceDurationMs = (settings.gracePeriodMinutes || 30) * 60 * 1000;
+    const graceElapsed = now - settings.graceBlockStartedAt;
+    
+    // Check if this is the same site that started the grace block
+    const graceBlockHostname = settings.graceBlockSite.toLowerCase();
+    const isSameSite = hostname === graceBlockHostname || hostname.endsWith('.' + graceBlockHostname);
+    
+    if (isSameSite && graceElapsed < graceDurationMs) {
+      // Still in grace period blocking - show countdown
+      const remainingMs = graceDurationMs - graceElapsed;
+      const remainingMinutes = Math.ceil(remainingMs / 60000);
+      return { 
+        hasAccess: false, 
+        reason: 'grace_blocking',
+        remainingMinutes,
+        message: `Wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} or solve a LeetCode problem`
+      };
+    } else if (isSameSite && graceElapsed >= graceDurationMs) {
+      // Grace period has elapsed - grant access and clear the block
+      const accessDurationMs = (settings.accessDurationMinutes || 60) * 60 * 1000;
+      const accessGrantedUntil = now + accessDurationMs;
+      
+      await chrome.storage.local.set({
+        graceBlockStartedAt: null,
+        graceBlockSite: null,
+        accessGrantedUntil
+      });
+      
+      chrome.notifications?.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: 'AlgoGate: Grace Period Complete',
+        message: 'You waited it out! Access granted temporarily.'
+      });
+      
+      const remainingMinutes = Math.ceil(accessDurationMs / 60000);
+      return { 
+        hasAccess: true, 
+        reason: 'grace_completed',
+        remainingMinutes
+      };
+    }
   }
   
   return { 
@@ -211,21 +292,33 @@ async function updateSettings(newSettings) {
   return { success: true };
 }
 
-// Start grace period
-async function startGracePeriod() {
+// Start grace period - blocks for the duration, then grants access
+async function startGracePeriod(siteUrl) {
   const settings = await chrome.storage.local.get(['gracePeriodMinutes']);
   
-  const gracePeriodMs = (settings.gracePeriodMinutes || 30) * 60 * 1000;
-  const accessGrantedUntil = Date.now() + gracePeriodMs;
+  // Extract hostname from the site URL
+  let hostname;
+  try {
+    hostname = new URL(siteUrl).hostname.toLowerCase();
+  } catch (e) {
+    hostname = siteUrl; // Fallback if URL parsing fails
+  }
   
-  await chrome.storage.local.set({ accessGrantedUntil });
+  // Start the grace block timer
+  await chrome.storage.local.set({ 
+    graceBlockStartedAt: Date.now(),
+    graceBlockSite: hostname
+  });
   
   chrome.notifications?.create({
     type: 'basic',
     iconUrl: 'icons/icon128.png',
     title: 'AlgoGate: Grace Period Started',
-    message: `You have ${settings.gracePeriodMinutes} minutes of access.`
+    message: `Stay blocked for ${settings.gracePeriodMinutes} minutes to earn access, or solve a LeetCode problem now!`
   });
   
-  return { accessGrantedUntil };
+  return { 
+    graceBlockStartedAt: Date.now(),
+    gracePeriodMinutes: settings.gracePeriodMinutes 
+  };
 }

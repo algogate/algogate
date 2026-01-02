@@ -75,19 +75,6 @@ function setupEventListeners() {
     chrome.tabs.create({ url: 'https://leetcode.com/problemset/' });
   });
   
-  // Grace period button
-  document.getElementById('grace-period').addEventListener('click', async () => {
-    try {
-      const response = await chrome.runtime.sendMessage({ type: 'START_GRACE_PERIOD' });
-      if (response.success) {
-        showNotification('Grace period started!', 'success');
-        await loadStatus();
-      }
-    } catch (error) {
-      showNotification('Failed to start grace period', 'error');
-    }
-  });
-  
   // Enable/disable toggle
   document.getElementById('enable-toggle').addEventListener('change', async (e) => {
     try {

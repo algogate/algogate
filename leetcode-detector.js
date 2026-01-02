@@ -23,24 +23,58 @@
   
   // Check if a problem was just solved
   function checkForSolution() {
-    // Method 1: Check for success notification/modal
-    const successIndicators = [
-      // Success notification text
-      document.querySelector('[data-e2e-locator="submission-result"]'),
-      // Accepted status
-      ...document.querySelectorAll('[class*="accepted"]'),
-      ...document.querySelectorAll('[class*="Accepted"]'),
-      // Success message
-      ...document.querySelectorAll('div, span')
-    ].filter(el => {
-      if (!el || !el.textContent) return false;
-      const text = el.textContent.toLowerCase();
-      return text.includes('accepted') || 
-             text.includes('success') ||
-             text.includes('congratulations');
+    // Look specifically for the submission result panel that appears after code submission
+    // This is more reliable than scanning for keywords that might appear in problem descriptions
+    
+    // Method 1: Check for the specific submission result container
+    const submissionResult = document.querySelector('[data-e2e-locator="submission-result"]');
+    
+    // Method 2: Look for elements with submission-related classes in the result panel area
+    const resultPanel = document.querySelector('[class*="result"]');
+    
+    if (!submissionResult && !resultPanel) {
+      return; // No submission result visible
+    }
+    
+    // Only check within the submission result area to avoid false positives from problem descriptions
+    const searchContext = submissionResult || resultPanel || document;
+    
+    // Look for "Accepted" verdict specifically in the result context
+    const acceptedElements = Array.from(searchContext.querySelectorAll('*')).filter(el => {
+      const classList = Array.from(el.classList || []).join(' ').toLowerCase();
+      const text = (el.textContent || '').trim();
+      
+      // Must have "accepted" in class or be exactly "Accepted" text
+      const hasAcceptedClass = classList.includes('accepted');
+      const isAcceptedText = text === 'Accepted';
+      
+      // Ensure it's not a negative result
+      const isNegative = text.toLowerCase().includes('wrong') ||
+                        text.toLowerCase().includes('error') ||
+                        text.toLowerCase().includes('failed') ||
+                        text.toLowerCase().includes('runtime error') ||
+                        text.toLowerCase().includes('time limit');
+      
+      return (hasAcceptedClass || isAcceptedText) && !isNegative;
     });
     
-    if (successIndicators.length > 0) {
+    // Additional check: look for the green success color typically used for accepted submissions
+    const hasSuccessIndicator = Array.from(searchContext.querySelectorAll('*')).some(el => {
+      const computedStyle = window.getComputedStyle(el);
+      const color = computedStyle.color || '';
+      const bgColor = computedStyle.backgroundColor || '';
+      
+      // Check for green colors commonly used for success (rgb values for various shades of green)
+      const isGreenish = color.includes('rgb(0, 184, 163)') || // LeetCode success green
+                        color.includes('rgb(46, 204, 113)') ||
+                        bgColor.includes('rgb(0, 184, 163)') ||
+                        bgColor.includes('rgb(46, 204, 113)');
+      
+      const text = (el.textContent || '').trim();
+      return isGreenish && text === 'Accepted';
+    });
+    
+    if (acceptedElements.length > 0 || hasSuccessIndicator) {
       // Extract problem information
       const problemInfo = extractProblemInfo();
       
@@ -52,22 +86,8 @@
       
       lastCheckedProblem = problemKey;
       
-      // Verify it's actually accepted (not just "Wrong Answer" text containing "Accepted")
-      const isAccepted = Array.from(document.querySelectorAll('*')).some(el => {
-        const classList = Array.from(el.classList || []).join(' ').toLowerCase();
-        const text = (el.textContent || '').trim().toLowerCase();
-        
-        // Look for explicit "Accepted" verdict
-        return (classList.includes('accepted') || text === 'accepted') &&
-               !text.includes('wrong') &&
-               !text.includes('error') &&
-               !text.includes('failed');
-      });
-      
-      if (isAccepted) {
-        console.log('AlgoGate: Problem solved!', problemInfo);
-        notifyProblemSolved(problemInfo);
-      }
+      console.log('AlgoGate: Problem solved!', problemInfo);
+      notifyProblemSolved(problemInfo);
     }
   }
   
