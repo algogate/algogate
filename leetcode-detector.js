@@ -23,58 +23,99 @@
   
   // Check if a problem was just solved
   function checkForSolution() {
-    // Look specifically for the submission result panel that appears after code submission
-    // This is more reliable than scanning for keywords that might appear in problem descriptions
+    // Multi-method approach to detect LeetCode acceptance
+    // LeetCode UI changes frequently, so we use multiple detection strategies
     
-    // Method 1: Check for the specific submission result container
-    const submissionResult = document.querySelector('[data-e2e-locator="submission-result"]');
+    // Strategy 1: Look for common submission result containers
+    const resultContainers = [
+      document.querySelector('[data-e2e-locator="submission-result"]'),
+      document.querySelector('[class*="submission-result"]'),
+      document.querySelector('[id*="submission-result"]'),
+      document.querySelector('[class*="result"]'),
+      document.querySelector('[data-region="submission-result"]'),
+      // Look for divs that commonly contain submission results
+      ...Array.from(document.querySelectorAll('div')).filter(div => {
+        const id = (div.id || '').toLowerCase();
+        const className = (div.className || '').toLowerCase();
+        return id.includes('result') || className.includes('result') || 
+               id.includes('submission') || className.includes('submission');
+      })
+    ].filter(Boolean);
     
-    // Method 2: Look for elements with submission-related classes in the result panel area
-    const resultPanel = document.querySelector('[class*="result"]');
+    // Strategy 2: Also check the entire document but with stricter criteria
+    // to avoid false positives from problem descriptions
+    const searchContexts = resultContainers.length > 0 ? resultContainers : [document];
     
-    if (!submissionResult && !resultPanel) {
-      return; // No submission result visible
+    let foundAcceptance = false;
+    
+    for (const searchContext of searchContexts) {
+      // Look for "Accepted" text with various criteria
+      const acceptedElements = Array.from(searchContext.querySelectorAll('*')).filter(el => {
+        const classList = Array.from(el.classList || []).join(' ').toLowerCase();
+        const text = (el.textContent || '').trim();
+        const textLower = text.toLowerCase();
+        
+        // Skip if element is too large (likely contains full problem description)
+        if (text.length > 1000) return false;
+        
+        // Look for "Accepted" in various forms
+        const hasAcceptedClass = classList.includes('accepted') || classList.includes('ac');
+        const isAcceptedText = text === 'Accepted' || textLower === 'accepted';
+        const containsAccepted = textLower === 'accepted' || 
+                                (text.length < 100 && textLower.includes('accepted'));
+        
+        // Ensure it's not a negative result
+        const isNegative = textLower.includes('wrong answer') ||
+                          textLower.includes('runtime error') ||
+                          textLower.includes('time limit exceeded') ||
+                          textLower.includes('memory limit') ||
+                          textLower.includes('compile error') ||
+                          textLower.includes('output limit') ||
+                          (textLower.includes('wrong') && textLower.includes('answer'));
+        
+        // Positive indicators
+        if (isNegative) return false;
+        
+        return hasAcceptedClass || isAcceptedText || 
+               (containsAccepted && searchContext !== document);
+      });
+      
+      // Strategy 3: Look for green success colors with "Accepted" text
+      const hasSuccessIndicator = Array.from(searchContext.querySelectorAll('*')).some(el => {
+        const text = (el.textContent || '').trim();
+        if (text.length > 100 || text !== 'Accepted') return false;
+        
+        const computedStyle = window.getComputedStyle(el);
+        const color = computedStyle.color || '';
+        const bgColor = computedStyle.backgroundColor || '';
+        
+        // Check for green colors (LeetCode uses various shades)
+        const hasGreenColor = color.includes('rgb(0, 184, 163)') || 
+                             color.includes('rgb(46, 204, 113)') ||
+                             color.includes('rgb(0, 175, 155)') ||
+                             color.includes('rgb(67, 160, 71)') ||
+                             bgColor.includes('rgb(0, 184, 163)') ||
+                             bgColor.includes('rgb(46, 204, 113)') ||
+                             bgColor.includes('rgb(0, 175, 155)');
+        
+        return hasGreenColor;
+      });
+      
+      // Strategy 4: Look for SVG checkmark icons that appear with accepted status
+      const hasCheckmarkIcon = Array.from(searchContext.querySelectorAll('svg')).some(svg => {
+        const svgClass = (svg.className.baseVal || '').toLowerCase();
+        const parentText = (svg.parentElement?.textContent || '').trim();
+        return (svgClass.includes('check') || svgClass.includes('success')) && 
+               parentText === 'Accepted';
+      });
+      
+      if (acceptedElements.length > 0 || hasSuccessIndicator || hasCheckmarkIcon) {
+        foundAcceptance = true;
+        break;
+      }
     }
     
-    // Only check within the submission result area to avoid false positives from problem descriptions
-    const searchContext = submissionResult || resultPanel || document;
-    
-    // Look for "Accepted" verdict specifically in the result context
-    const acceptedElements = Array.from(searchContext.querySelectorAll('*')).filter(el => {
-      const classList = Array.from(el.classList || []).join(' ').toLowerCase();
-      const text = (el.textContent || '').trim();
-      
-      // Must have "accepted" in class or be exactly "Accepted" text
-      const hasAcceptedClass = classList.includes('accepted');
-      const isAcceptedText = text === 'Accepted';
-      
-      // Ensure it's not a negative result
-      const isNegative = text.toLowerCase().includes('wrong') ||
-                        text.toLowerCase().includes('error') ||
-                        text.toLowerCase().includes('failed') ||
-                        text.toLowerCase().includes('runtime error') ||
-                        text.toLowerCase().includes('time limit');
-      
-      return (hasAcceptedClass || isAcceptedText) && !isNegative;
-    });
-    
-    // Additional check: look for the green success color typically used for accepted submissions
-    const hasSuccessIndicator = Array.from(searchContext.querySelectorAll('*')).some(el => {
-      const computedStyle = window.getComputedStyle(el);
-      const color = computedStyle.color || '';
-      const bgColor = computedStyle.backgroundColor || '';
-      
-      // Check for green colors commonly used for success (rgb values for various shades of green)
-      const isGreenish = color.includes('rgb(0, 184, 163)') || // LeetCode success green
-                        color.includes('rgb(46, 204, 113)') ||
-                        bgColor.includes('rgb(0, 184, 163)') ||
-                        bgColor.includes('rgb(46, 204, 113)');
-      
-      const text = (el.textContent || '').trim();
-      return isGreenish && text === 'Accepted';
-    });
-    
-    if (acceptedElements.length > 0 || hasSuccessIndicator) {
+    if (foundAcceptance) {
       // Extract problem information
       const problemInfo = extractProblemInfo();
       
