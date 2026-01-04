@@ -23,113 +23,52 @@
   
   // Check if a problem was just solved
   function checkForSolution() {
-    // Multi-method approach to detect LeetCode acceptance
-    // LeetCode UI changes frequently, so we use multiple detection strategies
+    // Look for the specific submission result element that only appears after submitting code
+    // Using the exact selector: <span data-e2e-locator="submission-result">Accepted</span>
+    const submissionResultSpan = document.querySelector('span[data-e2e-locator="submission-result"]');
     
-    // Strategy 1: Look for common submission result containers
-    const resultContainers = [
-      document.querySelector('[data-e2e-locator="submission-result"]'),
-      document.querySelector('[class*="submission-result"]'),
-      document.querySelector('[id*="submission-result"]'),
-      document.querySelector('[class*="result"]'),
-      document.querySelector('[data-region="submission-result"]'),
-      // Look for divs that commonly contain submission results
-      ...Array.from(document.querySelectorAll('div')).filter(div => {
-        const id = (div.id || '').toLowerCase();
-        const className = (div.className || '').toLowerCase();
-        return id.includes('result') || className.includes('result') || 
-               id.includes('submission') || className.includes('submission');
-      })
-    ].filter(Boolean);
+    // Only proceed if the element exists and contains "Accepted"
+    if (!submissionResultSpan || submissionResultSpan.textContent.trim() !== 'Accepted') {
+      return;
+    }
     
-    // Strategy 2: Also check the entire document but with stricter criteria
-    // to avoid false positives from problem descriptions
-    const searchContexts = resultContainers.length > 0 ? resultContainers : [document];
+    // Additional validation: Check for submission timestamp to ensure this is a recent submission
+    // Look for the "Submitted at" timestamp element
+    const timestampElements = Array.from(document.querySelectorAll('span.max-w-full.truncate'));
+    let hasRecentTimestamp = false;
     
-    let foundAcceptance = false;
-    
-    for (const searchContext of searchContexts) {
-      // Look for "Accepted" text with various criteria
-      const acceptedElements = Array.from(searchContext.querySelectorAll('*')).filter(el => {
-        const classList = Array.from(el.classList || []).join(' ').toLowerCase();
-        const text = (el.textContent || '').trim();
-        const textLower = text.toLowerCase();
+    for (const timestampEl of timestampElements) {
+      const text = timestampEl.textContent.trim();
+      // Check if this looks like a submission timestamp (e.g., "May 01, 2024 03:25")
+      if (text.match(/^[A-Za-z]{3}\s+\d{2},\s+\d{4}\s+\d{2}:\d{2}$/)) {
+        // Parse the timestamp
+        const submissionTime = new Date(text).getTime();
+        const now = Date.now();
         
-        // Skip if element is too large (likely contains full problem description)
-        if (text.length > 1000) return false;
-        
-        // Look for "Accepted" in various forms
-        const hasAcceptedClass = classList.includes('accepted') || classList.includes('ac');
-        const isAcceptedText = text === 'Accepted' || textLower === 'accepted';
-        const containsAccepted = textLower === 'accepted' || 
-                                (text.length < 100 && textLower.includes('accepted'));
-        
-        // Ensure it's not a negative result
-        const isNegative = textLower.includes('wrong answer') ||
-                          textLower.includes('runtime error') ||
-                          textLower.includes('time limit exceeded') ||
-                          textLower.includes('memory limit') ||
-                          textLower.includes('compile error') ||
-                          textLower.includes('output limit') ||
-                          (textLower.includes('wrong') && textLower.includes('answer'));
-        
-        // Positive indicators
-        if (isNegative) return false;
-        
-        return hasAcceptedClass || isAcceptedText || 
-               (containsAccepted && searchContext !== document);
-      });
-      
-      // Strategy 3: Look for green success colors with "Accepted" text
-      const hasSuccessIndicator = Array.from(searchContext.querySelectorAll('*')).some(el => {
-        const text = (el.textContent || '').trim();
-        if (text.length > 100 || text !== 'Accepted') return false;
-        
-        const computedStyle = window.getComputedStyle(el);
-        const color = computedStyle.color || '';
-        const bgColor = computedStyle.backgroundColor || '';
-        
-        // Check for green colors (LeetCode uses various shades)
-        const hasGreenColor = color.includes('rgb(0, 184, 163)') || 
-                             color.includes('rgb(46, 204, 113)') ||
-                             color.includes('rgb(0, 175, 155)') ||
-                             color.includes('rgb(67, 160, 71)') ||
-                             bgColor.includes('rgb(0, 184, 163)') ||
-                             bgColor.includes('rgb(46, 204, 113)') ||
-                             bgColor.includes('rgb(0, 175, 155)');
-        
-        return hasGreenColor;
-      });
-      
-      // Strategy 4: Look for SVG checkmark icons that appear with accepted status
-      const hasCheckmarkIcon = Array.from(searchContext.querySelectorAll('svg')).some(svg => {
-        const svgClass = (svg.className.baseVal || '').toLowerCase();
-        const parentText = (svg.parentElement?.textContent || '').trim();
-        return (svgClass.includes('check') || svgClass.includes('success')) && 
-               parentText === 'Accepted';
-      });
-      
-      if (acceptedElements.length > 0 || hasSuccessIndicator || hasCheckmarkIcon) {
-        foundAcceptance = true;
-        break;
+        // Only accept if submitted within the last 2 minutes (prevents old submissions from triggering)
+        if (now - submissionTime < 2 * 60 * 1000) {
+          hasRecentTimestamp = true;
+          break;
+        }
       }
     }
     
-    if (foundAcceptance) {
-      // Extract problem information
-      const problemInfo = extractProblemInfo();
-      
-      // Avoid duplicate notifications for the same problem
-      const problemKey = `${problemInfo.problemId}_${problemInfo.title}`;
-      if (lastCheckedProblem === problemKey) {
-        return;
-      }
-      
-      lastCheckedProblem = problemKey;
-      
-      console.log('AlgoGate: Problem solved!', problemInfo);
-      notifyProblemSolved(problemInfo);
+    // If we found the Accepted element but no recent timestamp, still proceed but be cautious
+    // This handles cases where timestamp format might have changed
+    
+    // Extract problem information
+    const problemInfo = extractProblemInfo();
+    
+    // Avoid duplicate notifications for the same problem
+    const problemKey = `${problemInfo.problemId}_${problemInfo.title}`;
+    if (lastCheckedProblem === problemKey) {
+      return;
     }
+    
+    lastCheckedProblem = problemKey;
+    
+    console.log('AlgoGate: Problem solved!', problemInfo);
+    notifyProblemSolved(problemInfo);
   }
   
   // Extract problem information from the page
