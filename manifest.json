@@ -16,5 +16,15 @@
     ],
     "background": {
         "service_worker": "background.js"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://leetcode.com/*",
+                "*://www.leetcode.com/*"
+            ],
+            "js": ["detect-solved.js"],
+            "run_at": "document_end"
+        }
+    ]
 }
