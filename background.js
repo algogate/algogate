@@ -38,7 +38,12 @@ const buildRules = () =>
   BLOCKED_DOMAINS.map((domain, index) => ({
     id: index + 1,
     priority: 1,
-    action: { type: 'block' },
+    action: { 
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html"
+      }
+    },
     condition: {
       urlFilter: `||${domain}^`,
       resourceTypes: ['main_frame', 'sub_frame']
