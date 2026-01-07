@@ -4,7 +4,9 @@
     "version": "1.0",
     "manifest_version": 3,
     "permissions": [
-        "declarativeNetRequest"
+        "declarativeNetRequest",
+        "activeTab",
+        "storage"
     ],
     "host_permissions": [
         "*://*.facebook.com/*",
@@ -16,5 +18,9 @@
     ],
     "background": {
         "service_worker": "background.js"
+    },
+    "action": {
+        "default_popup": "/pages/popup/popup.html",
+        "default_title": "AlgoGate"
     }
 }

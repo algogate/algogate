@@ -41,7 +41,7 @@ const buildRules = () =>
     action: { 
       "type": "redirect",
       "redirect": {
-        "extensionPath": "/blocked.html"
+        "extensionPath": "/pages/blocked/blocked.html"
       }
     },
     condition: {
