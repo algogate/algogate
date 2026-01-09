@@ -5,6 +5,7 @@
     "manifest_version": 3,
     "permissions": [
         "declarativeNetRequest",
+        "declarativeNetRequestFeedback",
         "activeTab",
         "storage"
     ],
@@ -22,5 +23,8 @@
     "action": {
         "default_popup": "/pages/popup/popup.html",
         "default_title": "AlgoGate"
+    },
+    "externally_connectable": {
+       "matches": ["chrome-extension://nfpgjkacnomfnenmgdghljglpiefneho/pages/blocked/blocked.html"]
     }
 }
