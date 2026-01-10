@@ -49,20 +49,21 @@ function renderStatus() {
       <div class="timer">${formatSeconds(gateStatus.secondsRemaining)}</div>
     `;
   } else if (gateStatus.graceActive) {
-    // GRACE ACTIVE
+    // GRACE ACTIVE - Subtle with explanation
     display.innerHTML = `
-      <div class="status-header">Grace Period</div>
-      <div class="status-message">Complete a problem to unlock!</div>
-      <div class="timer grace">${formatSeconds(gateStatus.graceSecondsRemaining)}</div>
+      <div class="status-header">Locked</div>
+      <div class="status-message">Working on LeetCode...</div>
+      <div class="timer-small">${formatSeconds(gateStatus.graceSecondsRemaining)}</div>
+      <div class="timer-caption">Time until reward eligibility</div>
     `;
   } else if (gateStatus.graceOffered) {
-    // GRACE OFFERED
+    // GRACE OFFERED - Verbose explanation
     display.innerHTML = `
-      <div class="status-header">Grace Ended</div>
-      <div class="status-message">Unlock for 30 more minutes?</div>
+      <div class="status-header">Reward Earned!</div>
+      <div class="status-message">You've been working on LeetCode for 30 minutes. As a reward, you can unlock access to social media for the next 30 minutes.</div>
       <div class="button-group">
-        <button id="accept-grace-btn" class="button">Unlock 30m</button>
-        <button id="decline-grace-btn" class="button secondary">Cancel</button>
+        <button id="accept-grace-btn" class="button">Claim Access</button>
+        <button id="decline-grace-btn" class="button secondary">No Thanks</button>
       </div>
     `;
     

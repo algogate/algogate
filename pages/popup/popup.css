@@ -46,6 +46,21 @@ h1 {
   color: #4CAF50;
 }
 
+.timer-small {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'Monaco', 'Courier New', monospace;
+  margin: 8px 0 4px 0;
+  color: #999;
+}
+
+.timer-caption {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
 .timer.grace {
   color: #FFC107;
 }

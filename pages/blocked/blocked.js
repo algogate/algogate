@@ -53,21 +53,22 @@ function renderUI() {
     timer.textContent = formatSeconds(gateStatus.secondsRemaining);
     timer.style.color = '#4CAF50';
   } else if (gateStatus.graceActive) {
-    // GRACE ACTIVE: Show grace countdown
-    heading.textContent = 'Grace Period';
-    message.textContent = 'Complete a LeetCode problem before time runs out!';
+    // GRACE ACTIVE: Subtle - keep focus on solving
+    heading.textContent = 'Site Blocked';
+    message.textContent = "You're working on LeetCode. Keep going!";
     timer.textContent = formatSeconds(gateStatus.graceSecondsRemaining);
-    timer.style.color = '#FFC107';
+    timer.style.color = '#666';
+    timer.style.fontSize = '24px';
   } else if (gateStatus.graceOffered) {
-    // GRACE OFFERED: Show offer with buttons
-    heading.textContent = 'Grace Ended';
-    message.textContent = 'You spent 30 minutes working! Unlock for 30 more minutes?';
+    // GRACE OFFERED: Explicit reward earned
+    heading.textContent = 'You Earned a Reward!';
+    message.textContent = 'You worked for 30 minutes. Claim 30 minutes of access?';
     timer.textContent = '';
     
-    // Add accept button
+    // Add claim button
     const acceptBtn = document.createElement('button');
     acceptBtn.className = 'button';
-    acceptBtn.textContent = 'Yes, Unlock 30 min';
+    acceptBtn.textContent = 'Claim Access';
     acceptBtn.addEventListener('click', () => {
       chrome.runtime.sendMessage({
         type: MSG.ACCEPT_GRACE,
@@ -78,7 +79,7 @@ function renderUI() {
     // Add decline button
     const declineBtn = document.createElement('button');
     declineBtn.className = 'button decline';
-    declineBtn.textContent = 'Keep Locked';
+    declineBtn.textContent = 'No Thanks';
     declineBtn.addEventListener('click', () => {
       window.history.back();
     });
