@@ -32,6 +32,6 @@ const CONFIG = Object.freeze({
   // DOM stability checks for LeetCode SPA navigation
   TITLE_POLL_INTERVAL: 250,               // How often to poll for title updates
   TITLE_POLL_MAX_ATTEMPTS: 20,            // Max attempts before timeout (20 * 250ms = 5 seconds)
-  TITLE_POLL_INITIAL_DELAY: 200,          // Initial delay before starting title poll
-  DOM_STABILIZATION_DELAY: 100            // Delay after title detected before checking solution
+  TITLE_POLL_INITIAL_DELAY: 2000,          // Initial delay before starting title poll
+  DOM_STABILIZATION_DELAY: 1000            // Delay after title detected before checking solution
 });
