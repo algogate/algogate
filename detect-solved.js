@@ -1,6 +1,9 @@
 // Task: detect when a NEW problem is opened, then when THAT problem is solved (Accepted OR already-solved badge), log to console.
 // if the problem was solved BEFORE the extension existed, we still detect it and log the solved timestamp from the page.
 
+// Load config (injected via manifest.json before this script)
+// CONFIG object is available globally
+
 (function () {
   "use strict";
 
@@ -71,7 +74,7 @@
    */
   function waitForTitleElement(slug) {
     let attempts = 0;
-    const maxAttempts = 20; // 20 * 250ms = 5 seconds max
+    const maxAttempts = CONFIG.TITLE_POLL_MAX_ATTEMPTS;
 
     const checkTitle = () => {
       // User navigated away
@@ -89,7 +92,7 @@
         if (titleHref.includes(`/problems/${slug}`)) {
           waitingForDomStability = false; // Allow interval checks now
           // Wait a bit for old DOM to fully clear before checking solution
-          setTimeout(checkForSolution, 100);
+          setTimeout(checkForSolution, CONFIG.DOM_STABILIZATION_DELAY);
           return;
         }
       }
@@ -98,16 +101,16 @@
       if (attempts >= maxAttempts) {
         waitingForDomStability = false; // Allow interval checks now
         // Wait a bit for DOM to stabilize even on timeout
-        setTimeout(checkForSolution, 100);
+        setTimeout(checkForSolution, CONFIG.DOM_STABILIZATION_DELAY);
         return;
       }
 
       // Check again
-      setTimeout(checkTitle, 250);
+      setTimeout(checkTitle, CONFIG.TITLE_POLL_INTERVAL);
     };
 
     // Start checking after a brief initial delay
-    setTimeout(checkTitle, 200);
+    setTimeout(checkTitle, CONFIG.TITLE_POLL_INITIAL_DELAY);
   }
 
 
@@ -257,7 +260,7 @@
       checkForNewProblem();
       checkForSolution();
       notifyUrlChanged(); // Check and notify about /problems/ path changes
-    }, 2000);
+    }, CONFIG.DETECT_CHECK_INTERVAL);
 
     // Initial URL change notification
     notifyUrlChanged();

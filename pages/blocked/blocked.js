@@ -3,6 +3,8 @@
  * Displays current gate status and handles user interactions.
  */
 
+// CONFIG object available via script tag in HTML
+
 let gateStatus = null;
 let updateInterval = null;
 
@@ -69,7 +71,7 @@ function renderUI() {
     acceptBtn.addEventListener('click', () => {
       chrome.runtime.sendMessage({
         type: MSG.ACCEPT_GRACE,
-        payload: { graceDuration: 30 * 60 * 1000 }
+        payload: { graceDuration: CONFIG.GRACE_UNLOCK_DURATION }
       }, () => requestGateStatus());
     });
 
@@ -107,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update every second
   updateInterval = setInterval(() => {
     requestGateStatus();
-  }, 1000);
+  }, CONFIG.BLOCKED_PAGE_UPDATE_INTERVAL);
 
   // Listen for status broadcasts
   chrome.runtime.onMessage.addListener((message) => {

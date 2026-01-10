@@ -27,7 +27,7 @@
                 "*://leetcode.com/*",
                 "*://www.leetcode.com/*"
             ],
-            "js": ["messages.js", "detect-solved.js"],
+            "js": ["config.js", "messages.js", "detect-solved.js"],
             "run_at": "document_end"
         }
     ],

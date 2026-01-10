@@ -3,6 +3,8 @@
  * Displays gate status and allows quick actions.
  */
 
+// CONFIG object available via script tag in HTML
+
 let gateStatus = null;
 let updateInterval = null;
 
@@ -70,7 +72,7 @@ function renderStatus() {
     acceptBtn.addEventListener('click', () => {
       chrome.runtime.sendMessage({
         type: MSG.ACCEPT_GRACE,
-        payload: { graceDuration: 30 * 60 * 1000 }
+        payload: { graceDuration: CONFIG.GRACE_UNLOCK_DURATION }
       }, () => {
         requestGateStatus();
       });
@@ -95,7 +97,7 @@ function renderStatus() {
     if (updateInterval) clearInterval(updateInterval);
     updateInterval = setInterval(() => {
       requestGateStatus();
-    }, 1000);
+    }, CONFIG.BLOCKED_PAGE_UPDATE_INTERVAL);
   } else {
     if (updateInterval) clearInterval(updateInterval);
   }
@@ -120,5 +122,5 @@ window.addEventListener('load', () => {
   // Refresh status every 2 seconds while popup is open
   setInterval(() => {
     requestGateStatus();
-  }, 2000);
+  }, CONFIG.POPUP_UPDATE_INTERVAL);
 });

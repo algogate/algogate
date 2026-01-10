@@ -14,21 +14,12 @@
  * - GRACE_OFFERED: 30-minute grace expired, user can optionally unlock for 30 minutes
  */
 
-// Load message definitions
+// Load message definitions and config
 importScripts('messages.js');
+importScripts('config.js');
 
-/**
- * Domains to block. Update this list to change what the extension blocks.
- * Though you should also update manifest.json's host_permissions to match.
- */
-const BLOCKED_DOMAINS = [
-  'facebook.com',
-  'x.com',
-  'instagram.com',
-  'tiktok.com',
-  'youtube.com',
-  'reddit.com'
-];
+// Extract config values for convenience
+const BLOCKED_DOMAINS = CONFIG.BLOCKED_DOMAINS;
 
 /**
  * Build DNR rules from the domain list.
@@ -219,7 +210,7 @@ const handleProblemSolved = async (payload) => {
 
   console.log('AlgoGate: NEW problem solved! Granting 60-minute access.');
 
-  const unlockDuration = 60 * 60 * 1000; // 60 minutes
+  const unlockDuration = CONFIG.UNLOCK_DURATION;
 
   // Clear any grace state (real unlock replaces grace)
   await chrome.storage.local.set({
@@ -260,7 +251,7 @@ const handleStartGraceTimer = async () => {
   }
 
   const now = Date.now();
-  const graceDuration = 30 * 60 * 1000; // 30 minutes
+  const graceDuration = CONFIG.GRACE_DURATION;
   const graceExpires = now + graceDuration;
 
   await chrome.storage.local.set({
@@ -322,7 +313,7 @@ const handleGraceTimerExpired = async () => {
  * User accepts grace unlock: grant 30 minutes of access.
  */
 const handleAcceptGrace = async (payload) => {
-  const graceDuration = payload.graceDuration || (30 * 60 * 1000); // default 30 minutes
+  const graceDuration = payload.graceDuration || CONFIG.GRACE_UNLOCK_DURATION;
 
   const now = Date.now();
   await chrome.storage.local.set({
