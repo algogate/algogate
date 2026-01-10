@@ -7,7 +7,8 @@
         "declarativeNetRequest",
         "declarativeNetRequestFeedback",
         "activeTab",
-        "storage"
+        "storage",
+        "alarms"
     ],
     "host_permissions": [
         "*://*.facebook.com/*",
@@ -26,7 +27,7 @@
                 "*://leetcode.com/*",
                 "*://www.leetcode.com/*"
             ],
-            "js": ["detect-solved.js"],
+            "js": ["messages.js", "detect-solved.js"],
             "run_at": "document_end"
         }
     ],

@@ -22,6 +22,11 @@
     return match ? match[1] : null;
   }
 
+  // Check if we're on /problems/ path (any subpath)
+  function isOnProblemsPath() {
+    return /^\/problems\//.test(window.location.pathname);
+  }
+
   // Best-effort title (meta is usually stable)
   function getProblemTitle() {
     const og = document.querySelector('meta[property="og:title"]')?.content;
@@ -83,7 +88,8 @@
         // Check if the href matches our current slug
         if (titleHref.includes(`/problems/${slug}`)) {
           waitingForDomStability = false; // Allow interval checks now
-          checkForSolution();
+          // Wait a bit for old DOM to fully clear before checking solution
+          setTimeout(checkForSolution, 100);
           return;
         }
       }
@@ -91,7 +97,8 @@
       // Timeout - proceed anyway
       if (attempts >= maxAttempts) {
         waitingForDomStability = false; // Allow interval checks now
-        checkForSolution();
+        // Wait a bit for DOM to stabilize even on timeout
+        setTimeout(checkForSolution, 100);
         return;
       }
 
@@ -244,12 +251,64 @@
     // Don't check solution immediately - let handleNewProblem's timeout handle it
     // to avoid race conditions with DOM updates
 
-    // check every 2 seconds
+    // check every 2 seconds for new problems and solutions
     if (checkInterval) clearInterval(checkInterval);
     checkInterval = setInterval(() => {
       checkForNewProblem();
       checkForSolution();
+      notifyUrlChanged(); // Check and notify about /problems/ path changes
     }, 2000);
+
+    // Initial URL change notification
+    notifyUrlChanged();
+  }
+
+  /**
+   * Notify background if user is on /problems/ path or left it.
+   * This controls grace timer pause/resume.
+   */
+  let lastOnProblemsState = null;
+  function notifyUrlChanged() {
+    const isOnProblems = isOnProblemsPath();
+
+    // Only notify when state changes
+    if (lastOnProblemsState === isOnProblems) {
+      return;
+    }
+    lastOnProblemsState = isOnProblems;
+
+    chrome.runtime.sendMessage({
+      type: MSG.URL_CHANGED,
+      payload: { isOnProblems: isOnProblems }
+    }).catch((err) => {
+      console.error('AlgoGate: Failed to send URL_CHANGED:', err);
+    });
+
+    // If on /problems/ and locked, try to start grace timer
+    if (isOnProblems) {
+      checkIfShouldStartGrace();
+    }
+  }
+
+  /**
+   * Check current gate status and start grace timer if locked and on /problems/.
+   */
+  function checkIfShouldStartGrace() {
+    chrome.runtime.sendMessage(
+      { type: MSG.GET_GATE_STATUS },
+      (response) => {
+        if (response && response.data && response.data.locked) {
+          // User is locked, on /problems/, and not already in grace - start it
+          if (!response.data.graceActive && !response.data.graceOffered) {
+            chrome.runtime.sendMessage({
+              type: MSG.START_GRACE_TIMER
+            }).catch((err) => {
+              console.error('AlgoGate: Failed to send START_GRACE_TIMER:', err);
+            });
+          }
+        }
+      }
+    );
   }
 
   // Detects when we navigated to a new problem 
@@ -292,7 +351,8 @@
         solvedLoggedForCurrent = true;
 
         const tsMs = findBestTimestampMsFromDom(); // best-effort
-        const solvedAtIso = tsMs ? new Date(tsMs).toISOString() : new Date().toISOString();
+        const solvedAtMs = tsMs || Date.now();
+        const solvedAtIso = new Date(solvedAtMs).toISOString();
 
         console.log("AlgoGate: ✅ Problem solved (Accepted)!", {
           slug: currentProblemSlug,
@@ -301,6 +361,20 @@
           solvedAt: solvedAtIso,
           source: tsMs ? "parsed-timestamp" : "fallback-now",
         });
+
+        // Send LEETCODE_SOLVED message to background (isNewSolve=true for fresh Accepted)
+        chrome.runtime.sendMessage({
+          type: MSG.LEETCODE_SOLVED,
+          payload: {
+            problemSlug: currentProblemSlug,
+            timestamp: solvedAtMs,
+            title: getProblemTitle(),
+            isNewSolve: true
+          }
+        }).catch((err) => {
+          console.error('AlgoGate: Failed to send LEETCODE_SOLVED:', err);
+        });
+
         return;
       }
     }
@@ -316,6 +390,19 @@
         url: window.location.href,
         solvedAt: tsMs ? new Date(tsMs).toISOString() : null,
         source: tsMs ? "parsed-timestamp" : "unknown",
+      });
+
+      // Send LEETCODE_SOLVED message to background (isNewSolve=false for already-solved badge)
+      chrome.runtime.sendMessage({
+        type: MSG.LEETCODE_SOLVED,
+        payload: {
+          problemSlug: currentProblemSlug,
+          timestamp: tsMs || Date.now(),
+          title: getProblemTitle(),
+          isNewSolve: false
+        }
+      }).catch((err) => {
+        console.error('AlgoGate: Failed to send LEETCODE_SOLVED:', err);
       });
     }
   }
