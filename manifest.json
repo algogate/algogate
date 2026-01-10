@@ -3,18 +3,59 @@
     "description": "Productivity browser extension that blocks social media access until you complete a LeetCode problem.",
     "version": "1.0",
     "manifest_version": 3,
+    "icons": {
+        "16": "icons/icon16.png",
+        "32": "icons/icon32.png",
+        "192": "icons/icon192.png",
+        "512": "icons/icon512.png"
+    },
     "permissions": [
-        "declarativeNetRequest"
+        "declarativeNetRequest",
+        "declarativeNetRequestFeedback",
+        "activeTab",
+        "storage",
+        "alarms"
     ],
     "host_permissions": [
         "*://*.facebook.com/*",
         "*://*.x.com/*",
+        "*://*.twitter.com/*",
         "*://*.instagram.com/*",
         "*://*.tiktok.com/*",
         "*://*.youtube.com/*",
-        "*://*.reddit.com/*"
+        "*://*.reddit.com/*",
+        "*://*.linkedin.com/*",
+        "*://*.tumblr.com/*",
+        "*://*.bsky.app/*",
+        "*://*.pinterest.com/*",
+        "*://*.discord.com/*",
+        "*://*.snapchat.com/*",
+        "*://*.telegram.org/*",
+        "*://*.whatsapp.com/*",
+        "*://*.messenger.com/*",
+        "*://*.twitch.tv/*"
     ],
     "background": {
         "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://leetcode.com/*",
+                "*://www.leetcode.com/*"
+            ],
+            "js": ["config.js", "messages.js", "detect-solved.js"],
+            "run_at": "document_end"
+        }
+    ],
+    "action": {
+        "default_popup": "/pages/popup/popup.html",
+        "default_title": "AlgoGate",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "32": "icons/icon32.png",
+            "192": "icons/icon192.png",
+            "512": "icons/icon512.png"
+        }
     }
 }
