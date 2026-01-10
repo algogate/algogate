@@ -4,7 +4,10 @@
     "version": "1.0",
     "manifest_version": 3,
     "permissions": [
-        "declarativeNetRequest"
+        "declarativeNetRequest",
+        "declarativeNetRequestFeedback",
+        "activeTab",
+        "storage"
     ],
     "host_permissions": [
         "*://*.facebook.com/*",
@@ -26,5 +29,12 @@
             "js": ["detect-solved.js"],
             "run_at": "document_end"
         }
-    ]
+    ],
+    "action": {
+        "default_popup": "/pages/popup/popup.html",
+        "default_title": "AlgoGate"
+    },
+    "externally_connectable": {
+       "matches": ["chrome-extension://nfpgjkacnomfnenmgdghljglpiefneho/pages/blocked/blocked.html"]
+    }
 }

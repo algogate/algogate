@@ -38,7 +38,12 @@ const buildRules = () =>
   BLOCKED_DOMAINS.map((domain, index) => ({
     id: index + 1,
     priority: 1,
-    action: { type: 'block' },
+    action: { 
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": `/pages/blocked/blocked.html`
+      }
+    },
     condition: {
       urlFilter: `||${domain}^`,
       resourceTypes: ['main_frame', 'sub_frame']
@@ -71,6 +76,55 @@ const refreshRules = () => {
 /**
  * Register rules when the extension is installed or updated.
  */
-chrome.runtime.onInstalled.addListener(() => {
+
+const clearLocalStorage = async () => {
+  await chrome.storage.local.remove("lastRedirectedAt");
+  await chrome.storage.local.remove("lastRedirectedDomain");
+  await chrome.storage.local.remove("ruleId");
+}
+
+chrome.runtime.onInstalled.addListener(async () => {
   refreshRules();
+  clearLocalStorage();
 });
+
+chrome.declarativeNetRequest.onRuleMatchedDebug.addListener(
+  async ({ rule, request }) => {
+    console.log("Rule matched")
+    // Only care about navigation redirects
+    if (request.type !== "main_frame") return;
+    console.log("Request type matched")
+    // Extract original domain
+    const originalUrl = new URL(request.url);
+    const domain = originalUrl.hostname;
+
+    const {lastDomain} = await chrome.storage.local.get("lastRedirectedDomain");
+    const {lastRedirectTime} = await chrome.storage.local.get("lastRedirectedAt");
+    // Store it
+    if (lastDomain != domain) {
+      const now = Date.now();
+      console.log("Setting local storage")
+      await chrome.storage.local.set({
+        lastRedirectedDomain: domain,
+        lastRedirectedAt: now,
+        ruleId: rule.ruleId
+      });
+      
+    } else {
+      console.log("Failed to set local storage")
+    }
+  }
+);
+
+chrome.runtime.onMessage.addListener(
+  (message, sender, sendResponse) => {
+    if (message.type === "GET_REDIRECT_TIME") {
+      chrome.storage.local.get("lastRedirectedAt", (result) => {
+        sendResponse({ data: result.lastRedirectedAt });
+      });
+
+      // REQUIRED for async responses
+      return true;
+    }
+  }
+);
