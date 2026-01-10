@@ -13,10 +13,21 @@
     "host_permissions": [
         "*://*.facebook.com/*",
         "*://*.x.com/*",
+        "*://*.twitter.com/*",
         "*://*.instagram.com/*",
         "*://*.tiktok.com/*",
         "*://*.youtube.com/*",
-        "*://*.reddit.com/*"
+        "*://*.reddit.com/*",
+        "*://*.linkedin.com/*",
+        "*://*.tumblr.com/*",
+        "*://*.bsky.app/*",
+        "*://*.pinterest.com/*",
+        "*://*.discord.com/*",
+        "*://*.snapchat.com/*",
+        "*://*.telegram.org/*",
+        "*://*.whatsapp.com/*",
+        "*://*.messenger.com/*",
+        "*://*.twitch.tv/*"
     ],
     "background": {
         "service_worker": "background.js"
