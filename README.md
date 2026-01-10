@@ -1,54 +1,56 @@
 # AlgoGate
 
-AlgoGate is a Chrome browser extension that blocks distracting social media sites until you grind the LeetCode you promised to.
+AlgoGate is a Chrome browser extension that blocks social media sites until you solve a LeetCode problem, with built-in timers and grace periods to encourage focused coding sessions.
 
-## Current Status (MVP)
-✅ Blocks a hardcoded list of social domains using Chrome Declarative Net Request (DNR).  
-🚧 LeetCode solve detection + unlocking logic is planned but not implemented yet.
+## How It Works
 
-## How it works
-AlgoGate uses **Declarative Net Request (DNR)** to block navigation requests at the browser network layer.
+**Core Mechanism**: DNR (Declarative Net Request) blocks 17 social media sites at the browser network layer—fast, reliable, and no long-running listeners needed.
 
-- Blocking is implemented as **dynamic DNR rules** created from a domain list in `background.js`.
-- Rules are installed on **extension install/update** via `chrome.runtime.onInstalled`.
-- Rules match top-level and iframe navigations using:
-    - `urlFilter: "||domain^"` (matches the domain and subdomains)
-    - `resourceTypes: ["main_frame", "sub_frame"]`
+**Three-State System**:
+1. **LOCKED** — Social media blocked. User must solve a LeetCode problem to unlock.
+2. **GRACE** — User navigates to `/problems/` while locked. 30-minute timer starts; solving a problem triggers a 60-minute unlock window.
+3. **GRACE_OFFERED** — Grace timer expires. User can claim a 30-minute access reward by clicking "Claim Access" in the blocked page or popup.
 
-Why DNR?
-- Fast and reliable: rules run in the network stack (native) before requests are sent.
-- No long-running JS listeners required.
+**Detection & Messaging**:
+- A content script on `leetcode.com` detects when a new problem is opened and when it's solved.
+- Messages (`MSG`) route between the LeetCode detector, background service worker, and popup/blocked pages.
+- Storage tracks unlock times, grace state, and offer flags across extension sessions.
+
+## Blocked Domains
+facebook.com, x.com, twitter.com, instagram.com, tiktok.com, youtube.com, reddit.com, linkedin.com, tumblr.com, bsky.app, pinterest.com, discord.com, snapchat.com, telegram.org, whatsapp.com, messenger.com, twitch.tv
 
 ## Files
-- `manifest.json` — Extension metadata, permissions, host permissions, background service worker entry.
-- `background.js` — Builds and installs dynamic DNR rules to block the configured domains.
-- `README.md` — Project documentation.
 
-## Install / Run locally
+| File | Purpose |
+|------|---------|
+| `manifest.json` | Extension metadata, permissions, and service worker entry point |
+| `background.js` | DNR rule management; gate state machine (lock/unlock/grace); storage schema |
+| `config.js` | Centralized config: blocked domains, timers (60m unlock, 30m grace), polling intervals |
+| `messages.js` | Message type constants and validation for inter-component communication |
+| `detect-solved.js` | Content script for LeetCode; detects new problems and solution badges |
+| `pages/blocked/blocked.html`, `.js`, `.css` | Redirect page shown when social sites are blocked |
+| `pages/popup/popup.html`, `.js`, `.css` | Extension popup; shows gate status and "Claim Access" button |
+
+## Install & Run
+
 1. Open Chrome → `chrome://extensions`
-2. Enable **Developer mode**
-3. Click **Load unpacked**
-4. Select the `algogate/` folder (the one containing `manifest.json`)
+2. Enable **Developer mode** (top-right)
+3. Click **Load unpacked** and select the `algogate/` folder
 
-## Debugging (view logs)
-Because this is MV3, the background script runs as a **service worker**.
+## Debug
 
-1. Go to `chrome://extensions`
-2. Find **AlgoGate**
-3. Click **Service worker** → **Inspect**
-4. Check the Console for logs like:
-    - `AlgoGate: updated N blocking rules`
+1. Navigate to `chrome://extensions`
+2. Under **AlgoGate**, click **Service worker** → **Inspect**
+3. Check the Console for logs:
+   - `AlgoGate: updated N blocking rules`
+   - `AlgoGate: 🆕 New problem detected: { slug, title, url, seenAt }`
+   - `AlgoGate: ✅ Problem solved: { slug, isNewSolve, timestamp }`
 
-## Configure blocked sites
-To add/remove blocked sites:
-1. Update `BLOCKED_DOMAINS` in `background.js`
-2. Update `host_permissions` in `manifest.json` to include the same domains
+## Configuration
 
-Then reload the extension in `chrome://extensions`.
+To change blocked domains:
+1. Edit `host_permissions` in `manifest.json`
+2. Config.js auto-extracts domains from manifest
+3. Reload the extension in `chrome://extensions`
 
-## Roadmap
-Planned next steps:
-- Detect when a **NEW** LeetCode problem is solved (`leetcode.com`) using a content script
-- Define message schemas for event routing (LeetCode watcher → background → UI)
-- Add unlock window logic (temporarily disable DNR rules after solve)
-- Add popup UI + optional top bar countdown
+To adjust timers (unlock duration, grace duration, polling intervals), edit the `CONFIG` object in [config.js](config.js).
