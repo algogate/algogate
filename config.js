@@ -20,8 +20,8 @@ const CONFIG = Object.freeze({
 
   // Timer durations (in milliseconds)
   UNLOCK_DURATION: 60 * 60 * 1000,        // 60 minutes after solving a problem
-  GRACE_DURATION: 1 * 60 * 1000,          // 30 minutes grace period on /problems/
-  GRACE_UNLOCK_DURATION: 1 * 60 * 1000,   // 30 minutes if user accepts grace offer
+  GRACE_DURATION: 30 * 60 * 1000,          // 30 minutes grace period on /problems/
+  GRACE_UNLOCK_DURATION: 30 * 60 * 1000,   // 30 minutes if user accepts grace offer
 
   // Polling intervals (in milliseconds)
   DETECT_CHECK_INTERVAL: 2000,            // How often to check for new problems/solutions on LeetCode
