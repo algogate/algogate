@@ -57,8 +57,5 @@
             "192": "icons/icon192.png",
             "512": "icons/icon512.png"
         }
-    },
-    "externally_connectable": {
-       "matches": ["chrome-extension://nfpgjkacnomfnenmgdghljglpiefneho/pages/blocked/blocked.html"]
     }
 }
